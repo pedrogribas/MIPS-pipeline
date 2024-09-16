@@ -1,3 +1,8 @@
-lw $t0, 1200($t1)
-add $t0, $s2, $t0
-sw $t0, 1200($t1)
+add $t1, $t2, $t3
+sub $t4, $t1, $t5
+add $t1, $t2, $t3
+sub $t4, $t1, $t5
+lw $t1, 0($t2) 
+add $t2, $t3, $t4
+add $t1, $t2, $t3
+sub $t1, $t4, $t5

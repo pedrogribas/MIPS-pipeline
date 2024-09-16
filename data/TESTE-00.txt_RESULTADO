@@ -1,0 +1,4 @@
+add $t1, $t2, $t3
+NOP
+NOP
+sub $t1, $t4, $t5
