@@ -3,7 +3,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class InstructionScheduler {
     private String filepathAnswer;
@@ -12,7 +14,7 @@ public class InstructionScheduler {
     private boolean[] processedInstructions; // Para rastrear quais instruções já foram processadas
 
     public InstructionScheduler(List<Instruction> instructions, int resolutionStrategy, String filepath) {
-        filepathAnswer = filepath;
+        this.filepathAnswer = filepath;
         if (instructions == null) {
             throw new IllegalArgumentException("A lista de instruções não pode ser nula");
         }
@@ -20,53 +22,62 @@ public class InstructionScheduler {
         this.resolutionStrategy = resolutionStrategy;
         this.processedInstructions = new boolean[instructions.size()]; // Inicializa o array para marcar as instruções
     }
-    public void checkDependencies() {
+
+    // Método que apenas checa dependências, sem aplicar resoluções
+    public boolean checkDependencies(int i, int j) {
+        Instruction instr1 = instructions.get(i);
+        Instruction instr2 = instructions.get(j);
+
+        // Verifica se há uma dependência RAW
+        if (hasRAWDependency(instr1, instr2)) {
+            System.out.println("Dependência RAW detectada entre instruções " + (i + 1) + " e " + (j + 1));
+            return true; // Retorna true se houver uma dependência RAW
+        }
+
+        return false;
+    }
+
+    // Método que percorre todas as instruções e resolve os conflitos
+    public void resolve() {
         if (instructions == null) {
             throw new IllegalStateException("A lista de instruções não foi inicializada");
         }
-    
-        boolean changesMade;
-        List<Instruction> newInstructions;
-    
-        do {
-            changesMade = false;
-            newInstructions = new ArrayList<>();
-            int i = 0;
-    
-            while (i < instructions.size()) {
-                Instruction instr1 = instructions.get(i);
-                newInstructions.add(instr1); // Adiciona a instrução original
-    
-                boolean hasDependency = false;
-                int j;
-                
-                // Verifica dependências para as instruções subsequentes
-                for (j = i + 1; j < instructions.size(); j++) {
-                    Instruction instr2 = instructions.get(j);
-                    if (hasRAWDependency(instr1, instr2)) {
-                        System.out.println("Dependência RAW detectada entre instruções " + (i + 1) + " e " + (j + 1));
-                        applyBubble(i, newInstructions); // Adiciona um NOP
-                        changesMade = true;
-                        hasDependency = true;
-                        break; // Sai do loop para evitar múltiplas bolhas para a mesma dependência
-                    }
+
+        List<Instruction> newInstructions = new ArrayList<>(); // Lista para armazenar as novas instruções
+        Set<String> processedPairs = new HashSet<>(); // Armazena pares processados para evitar loops
+
+        for (int i = 0; i < instructions.size(); i++) {
+            Instruction instr1 = instructions.get(i);
+            newInstructions.add(instr1); // Adiciona a instrução original
+
+            for (int j = i + 1; j < instructions.size(); j++) {
+                String dependencyKey = i + "-" + j;
+
+                if (processedPairs.contains(dependencyKey)) {
+                    continue; // Pula se o par já foi processado
                 }
-    
-                if (hasDependency) {
-                    // Adiciona a bolha e avança o índice para pular a instrução original e a bolha
-                    i = j + 1;
-                } else {
-                    // Avança normalmente se não houver dependência
-                    i++;
+
+                if (checkDependencies(i, j)) {
+                    // Aplica a resolução de acordo com a estratégia escolhida
+                    applyResolution(i, j, newInstructions);
+
+                    // Marca o par como processado
+                    processedPairs.add(dependencyKey);
+
+                    // Sai do loop para avançar para a próxima instrução
+                    break;
                 }
             }
-    
-            instructions = new ArrayList<>(newInstructions); // Atualiza a lista de instruções
-        } while (changesMade);
-    
+        }
+
+        // Atualiza a lista de instruções com a nova lista
+        instructions = new ArrayList<>(newInstructions);
+
+        // Escreve o resultado final no arquivo de saída
         writeInstructionsToFile(filepathAnswer + "_RESULTADO");
     }
-    
+
+    // Verifica se há uma dependência RAW entre duas instruções
     private boolean hasRAWDependency(Instruction instr1, Instruction instr2) {
         if (instr1 instanceof RType && instr2 instanceof RType) {
             RType r1 = (RType) instr1;
@@ -87,8 +98,8 @@ public class InstructionScheduler {
         }
         return false;
     }
-    
 
+    // Método que aplica a resolução conforme a estratégia definida
     private void applyResolution(int i, int j, List<Instruction> newInstructions) {
         switch (resolutionStrategy) {
             case 0: // Bolha
@@ -113,10 +124,13 @@ public class InstructionScheduler {
                 throw new IllegalArgumentException("Estratégia de resolução inválida: " + resolutionStrategy);
         }
     }
+
+    // Aplica uma bolha (NOP) na lista de instruções
     private void applyBubble(int i, List<Instruction> newInstructions) {
-        newInstructions.add(new NopInstruction()); // Adiciona a bolha (NOP)
+        newInstructions.add(new NopType()); // Adiciona uma instrução NOP (bolha)
     }
-    
+
+    // Escreve as instruções no arquivo de saída
     private void writeInstructionsToFile(String filename) {
         File file = new File(filename);
 
@@ -145,19 +159,17 @@ public class InstructionScheduler {
         }
     }
 
+    // Formata a instrução para saída no arquivo
     private String formatInstruction(Instruction instr) {
-        // Formata a instrução de acordo com o tipo
         if (instr instanceof RType) {
             RType r = (RType) instr;
             return String.format("%s %s, %s, %s", r.getOp(), r.getRd(), r.getRs(), r.getRt());
         } else if (instr instanceof IType) {
             IType i = (IType) instr;
-            // Usa %s para o campo immediate, já que ele é sempre uma string
             return String.format("%s %s, %s, %s", i.getOp(), i.getRt(), i.getRs(), i.getImmediate());
         }
         return instr.toString();
     }
-    
 
     private boolean canApplyForwarding(int i, int j) {
         // Implementar a lógica para verificar se o forwarding pode resolver o conflito
@@ -170,15 +182,4 @@ public class InstructionScheduler {
         return false;
     }
 
-    // Classe interna representando uma instrução NOP (No Operation)
-    private static class NopInstruction extends Instruction {
-        public NopInstruction() {
-            super(new String[] { "nop" });
-        }
-
-        @Override
-        public String toString() {
-            return "NOP";
-        }
-    }
 }

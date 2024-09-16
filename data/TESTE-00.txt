@@ -1,8 +1,5 @@
 add $t1, $t2, $t3
 sub $t4, $t1, $t5
-add $t1, $t2, $t3
-sub $t4, $t1, $t5
-lw $t1, 0($t2) 
-add $t2, $t3, $t4
-add $t1, $t2, $t3
-sub $t1, $t4, $t5
+add $t6, $t1, $t7
+sw $t1, 8($t2)
+lw $t8, 4($t1)

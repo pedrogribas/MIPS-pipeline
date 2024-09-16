@@ -34,10 +34,10 @@ public class ReadTxt {
                 instructions.add(instruction);
             }
             reader.close();
-            
+
             // Agora, após a lista de instruções ser preenchida
             InstructionScheduler scheduler = new InstructionScheduler(instructions, strategy, filepath);
-            scheduler.checkDependencies();  // Verificar dependências
+            scheduler.resolve(); // chama classe schedule
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -50,11 +50,15 @@ public class ReadTxt {
                 return new RType(instruction);
             }
             case "lb", "lw", "lh", "lbu", "lhu", "lwr", "lwl", "sw", "sb", "sh", "swl", "swr", "btlz", "bltzal",
-                    "bgezal", "beq", "bne", "blez", "bgtz", "addi", "addiu", "slti", "sltiu", "andi", "ori", "xori", "lui", "bltz", "bgez" -> {
+                    "bgezal", "beq", "bne", "blez", "bgtz", "addi", "addiu", "slti", "sltiu", "andi", "ori", "xori",
+                    "lui", "bltz", "bgez" -> {
                 return new IType(instruction);
             }
             case "j", "jal" -> {
                 return new JType(instruction);
+            }
+            case "NOP" -> {
+                return new NopType();
             }
             default -> throw new UnsupportedOperationException("Invalid instruction: " + instruction[0]);
         }

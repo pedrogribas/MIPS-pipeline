@@ -1,4 +1,6 @@
 add $t1, $t2, $t3
 NOP
-NOP
-sub $t1, $t4, $t5
+sub $t4, $t1, $t5
+add $t6, $t1, $t7
+sw $t2, $t1, 8
+lw $t1, $t8, 4
